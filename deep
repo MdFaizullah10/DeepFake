@@ -1,0 +1,104 @@
+# DeepFake Detection — Next-Level Upgrade Plan
+
+## Overview
+
+The existing project has a solid Flask + PyTorch backend (`Main_deepfake.py`) with a ResNeXt50 + LSTM model. The frontend is currently a compiled React bundle (static files) passed through Flask's `render_template`. The plan is to **replace the old React bundle frontend** with a fully custom, stunning HTML/CSS/JS page served directly by Flask, while also upgrading the backend with better performance, error handling, and additional response data.
+
+---
+
+## Proposed Changes
+
+### 1. Backend — `Main_deepfake.py`
+
+#### [MODIFY] [Main_deepfake.py](file:///c:/Users/mdfai/OneDrive/Desktop/deep%20fake%20video/deep%20fake%20video/Main_deepfake.py)
+
+- Fix the `UPLOAD_FOLDER` path (`'data files'` → `'uploads'` — a clean, always-present directory)
+- Add `start_time` / `end_time` tracking and return `time_taken` in the JSON response
+- Return `frames_analyzed` count alongside prediction + confidence
+- Add a `/health` GET endpoint for deployment readiness checks
+- Add proper JSON error responses for bad requests (no file, wrong extension)
+- Accept only video file extensions (`.mp4`, `.avi`, `.mov`, `.mkv`)
+- Fix `predict()` to call `model(img.to('cpu'))` correctly (current code has a bare `.to()` with no device argument)
+- Fix frame count: `sequence_length=20` is already lean; expose it as a constant `SEQUENCE_LENGTH`
+- Serve the new `index.html` template directly (no more React static bundle dependency)
+- Add `data_files` / `uploads` folder auto-creation on startup
+
+---
+
+### 2. Frontend — Complete Redesign
+
+#### [MODIFY] [index.html](file:///c:/Users/mdfai/OneDrive/Desktop/deep%20fake%20video/deep%20fake%20video/templates/index.html)
+
+Full rewrite of `index.html` — pure HTML + CSS + vanilla JS, no external frameworks (except Google Fonts + Font Awesome icons via CDN). Features:
+
+| Feature | Implementation |
+|---|---|
+| Dark glassmorphism design | CSS backdrop-filter, gradients, HSL palette |
+| Hero section | Animated gradient headline, tagline |
+| Drag-&-drop upload zone | JS drag events + file input |
+| Video preview | `<video>` tag updated via `URL.createObjectURL()` before upload |
+| Loading overlay + spinner | CSS keyframe spinner, shown on form submit |
+| Result card (REAL / FAKE) | Color-coded (green/red glow), animated entrance |
+| Confidence bar | CSS `width` transition animated from 0 → value% |
+| Processing details | Time taken + frames analyzed badges |
+| Insight blurb | Contextual text explaining the result |
+| Responsive layout | CSS Grid + media queries |
+| Micro-animations | Hover lifts, fade-ins, pulse on result icon |
+
+The template will use Jinja2 to receive the `data` variable from Flask and render the result inline (no separate AJAX call needed, keeping backward compatibility with the existing POST flow).
+
+**Optionally** also wire up a JavaScript `fetch()` call so results appear without full page reload (progressive enhancement).
+
+---
+
+### 3. Static Assets — `static/` Cleanup
+
+- Keep `static/react/` folder untouched (harmless)
+- Add `static/css/style.css` — external stylesheet (imported by index.html)
+
+---
+
+### 4. README — `README.md` (New)
+
+#### [NEW] [README.md](file:///c:/Users/mdfai/OneDrive/Desktop/deep%20fake%20video/deep%20fake%20video/README.md)
+
+Full GitHub-ready README with:
+- Project banner/badges
+- Feature list
+- Architecture diagram (ASCII)
+- Setup & installation steps
+- How to run locally
+- Model details (ResNeXt50 + LSTM)
+- Deployment guide (Render, Railway)
+- Contributing section
+- License
+
+---
+
+## Open Questions
+
+> [!IMPORTANT]
+> **Upload folder**: The backend currently uses `'data files'` (with a space) as `UPLOAD_FOLDER` but the actual folder on disk is both `data files` and `uploads`. I'll standardize to `uploads` — please confirm this is okay, or let me know if you want to keep `data files`.
+
+> [!IMPORTANT]
+> **AJAX vs full-page POST**: Do you want results to appear without a full page refresh (AJAX fetch), or is the current full-page POST + Jinja template render approach acceptable? I'll implement AJAX by default for a smoother UX.
+
+> [!NOTE]
+> The old React static bundle in `static/react/` will be kept in place but will no longer be used by the new template. You can delete it later to save space.
+
+---
+
+## Verification Plan
+
+### Automated
+- Start Flask: `python Main_deepfake.py`
+- Upload a test video via the UI and verify result card renders correctly
+- Check `/health` endpoint returns `200 OK`
+
+### Manual UI Verification
+- Open browser at `http://localhost:5000`
+- Drag-and-drop a video → confirm preview appears
+- Click Analyze → confirm spinner appears → result card animates in
+- Verify FAKE shows red glow, REAL shows green glow
+- Verify confidence bar animates to correct percentage
+- Test on mobile viewport (DevTools)
